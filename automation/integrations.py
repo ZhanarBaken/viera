@@ -1,6 +1,9 @@
 """Thin clients for AmoCRM, WazzUp, Telegram. All I/O lives here."""
+import logging
 import requests
 from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 class AmoCRM:
@@ -69,6 +72,9 @@ class WazzUp:
         }
 
     def send_message(self, phone: str, text: str, channel_id: str):
+        if settings.DRY_RUN:
+            logger.info("[DRY_RUN] send_message to=%s channel=%s text=%r", phone, channel_id, text)
+            return
         r = requests.post(
             f"{self._BASE}/message",
             json={
