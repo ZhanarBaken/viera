@@ -95,8 +95,7 @@ class WazzUp:
             headers=self._headers,
             timeout=10,
         )
-        r.raise_for_status()
-        return r.json()
+        r.raise_for_status()  # 204 No Content — успех
 
 
 class Telegram:
