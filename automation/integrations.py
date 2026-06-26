@@ -44,18 +44,27 @@ class AmoCRM:
         return self.get_lead_info(lead_id)["status_id"]
 
     def move_to_drip(self, lead_id: str):
+        if settings.DRY_RUN:
+            logger.info("[DRY_RUN] move_to_drip lead_id=%s", lead_id)
+            return
         self._patch(f"/leads/{lead_id}", {
             "pipeline_id": settings.AMOCRM_PIPELINE_ID,
             "status_id": settings.AMOCRM_STAGE_DRIP_ID,
         })
 
     def move_to_human(self, lead_id: str):
+        if settings.DRY_RUN:
+            logger.info("[DRY_RUN] move_to_human lead_id=%s", lead_id)
+            return
         self._patch(f"/leads/{lead_id}", {
             "pipeline_id": settings.AMOCRM_PIPELINE_ID,
             "status_id": settings.AMOCRM_STAGE_HUMAN_ID,
         })
 
     def close_lead(self, lead_id: str, note: str = "Не вышел на связь"):
+        if settings.DRY_RUN:
+            logger.info("[DRY_RUN] close_lead lead_id=%s note=%r", lead_id, note)
+            return
         self._patch(f"/leads/{lead_id}", {"status_id": 143})
         self._post(f"/leads/{lead_id}/notes", [{"note_type": "common", "params": {"text": note}}])
 
