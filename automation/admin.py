@@ -1,6 +1,10 @@
 from django.contrib import admin
 from .models import AutomationConfig, ReminderMessage, LeadAutomation
 
+admin.site.site_header = "Viera — Автоматизация продаж"
+admin.site.site_title = "Viera CRM"
+admin.site.index_title = "WhatsApp → AmoCRM: управление ботом"
+
 
 @admin.register(AutomationConfig)
 class AutomationConfigAdmin(admin.ModelAdmin):
