@@ -9,7 +9,7 @@ admin.site.index_title = "WhatsApp → AmoCRM: управление ботом"
 @admin.register(AutomationConfig)
 class AutomationConfigAdmin(admin.ModelAdmin):
     fieldsets = [
-        ("Таймеры", {
+        ("Таймеры (все значения в минутах)", {
             "fields": [
                 "manager_reply_wait",
                 "first_reminder_delay",
@@ -17,15 +17,23 @@ class AutomationConfigAdmin(admin.ModelAdmin):
                 "close_delay",
                 "reactivation_delay",
             ],
-            "description": "Все значения в минутах. 1ч = 60, 1ч40мин = 100, 5ч = 300, 7 дней = 10080.",
+            "description": "1ч = 60 | 1ч40мин = 100 | 6ч = 360 | 24ч = 1440 | 7 дней = 10080",
         }),
     ]
 
     def has_add_permission(self, request):
-        return not AutomationConfig.objects.exists()
+        return False
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+    def changelist_view(self, request, extra_context=None):
+        from django.http import HttpResponseRedirect
+        from django.urls import reverse
+        obj = AutomationConfig.get()
+        return HttpResponseRedirect(
+            reverse("admin:automation_automationconfig_change", args=[obj.pk])
+        )
 
 
 @admin.register(ReminderMessage)
