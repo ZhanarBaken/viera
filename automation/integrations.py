@@ -90,13 +90,13 @@ class WazzUp:
             "Content-Type": "application/json",
         }
 
-    def send_message(self, phone: str, text: str, channel_id: str, image_url: str = ""):
+    def send_message(self, phone: str, text: str, channel_id: str, image_url: str = "", chat_type: str = "whatsapp"):
         if _is_dry_run(phone):
-            logger.info("[DRY_RUN] send_message to=%s channel=%s text=%r image_url=%s", phone, channel_id, text, image_url)
+            logger.info("[DRY_RUN] send_message to=%s type=%s channel=%s text=%r image_url=%s", phone, chat_type, channel_id, text, image_url)
             return
         payload = {
             "channelId": channel_id,
-            "chatType": "whatsapp",
+            "chatType": chat_type,
             "chatId": "".join(c for c in phone if c.isdigit()),
         }
         if image_url:

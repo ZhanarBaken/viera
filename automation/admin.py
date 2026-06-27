@@ -54,10 +54,10 @@ class ReminderMessageAdmin(admin.ModelAdmin):
 
 @admin.register(LeadAutomation)
 class LeadAutomationAdmin(admin.ModelAdmin):
-    list_display = ["lead_id", "phone", "status", "updated_at"]
-    list_filter = ["status"]
+    list_display = ["lead_id", "phone", "chat_type", "status", "updated_at"]
+    list_filter = ["status", "chat_type"]
     search_fields = ["lead_id", "phone"]
-    readonly_fields = ["lead_id", "phone", "status", "task_id", "created_at", "updated_at"]
+    readonly_fields = ["lead_id", "phone", "chat_type", "channel_id", "status", "task_id", "created_at", "updated_at"]
 
     def has_add_permission(self, request):
         return False

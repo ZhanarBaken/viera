@@ -23,19 +23,25 @@ def _get_active_lead(phone: str) -> LeadAutomation | None:
     )
 
 
-def _save_channel(lead: LeadAutomation, channel_id: str):
+def _save_channel(lead: LeadAutomation, channel_id: str, chat_type: str = ""):
+    fields = []
     if channel_id and not lead.channel_id:
         lead.channel_id = channel_id
-        lead.save(update_fields=["channel_id"])
+        fields.append("channel_id")
+    if chat_type and not lead.chat_type:
+        lead.chat_type = chat_type
+        fields.append("chat_type")
+    if fields:
+        lead.save(update_fields=fields)
 
 
-def on_outbound(phone: str, channel_id: str = ""):
+def on_outbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     """Менеджер написал клиенту (WazzUp outbound) — запускаем таймер для активного лида."""
     lead = _get_active_lead(phone)
     if lead is None or not lead.lead_id:
         return
 
-    _save_channel(lead, channel_id)
+    _save_channel(lead, channel_id, chat_type)
     lead.cancel_pending_task()
     lead.status = LeadAutomation.WAITING
 
@@ -47,7 +53,7 @@ def on_outbound(phone: str, channel_id: str = ""):
     lead.save()
 
 
-def on_inbound(phone: str, channel_id: str = ""):
+def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     """Клиент написал нам (WazzUp inbound) — ищем его активный лид."""
     lead = (
         LeadAutomation.objects
@@ -59,7 +65,7 @@ def on_inbound(phone: str, channel_id: str = ""):
     if lead is None:
         return
 
-    _save_channel(lead, channel_id)
+    _save_channel(lead, channel_id, chat_type)
 
     if lead.status == LeadAutomation.WAITING:
         lead.cancel_pending_task()

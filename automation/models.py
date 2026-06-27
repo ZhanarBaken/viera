@@ -96,9 +96,14 @@ class LeadAutomation(models.Model):
         (HUMAN, "Нужен человек"),
     ]
 
+    WHATSAPP = "whatsapp"
+    INSTAGRAM = "instagram"
+    CHAT_TYPE_CHOICES = [(WHATSAPP, "WhatsApp"), (INSTAGRAM, "Instagram")]
+
     lead_id = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="ID лида AmoCRM")
-    phone = models.CharField(max_length=50, db_index=True, verbose_name="Телефон клиента")
+    phone = models.CharField(max_length=50, db_index=True, verbose_name="Телефон / Chat ID клиента")
     channel_id = models.CharField(max_length=100, blank=True, verbose_name="ID канала WazzUp")
+    chat_type = models.CharField(max_length=20, choices=CHAT_TYPE_CHOICES, default=WHATSAPP, verbose_name="Тип чата")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, verbose_name="Статус")
     task_id = models.CharField(max_length=255, blank=True, verbose_name="ID задачи Celery")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создан")

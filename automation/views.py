@@ -23,15 +23,16 @@ def wazzup_webhook(request):
     for message in data.get("messages", []):
         phone = _extract_phone(message)
         channel_id = message.get("channelId", "")
+        chat_type = message.get("chatType", "whatsapp")
         if not phone:
             continue
 
         save_message(phone, message)
 
         if message.get("isEcho", False):
-            services.on_outbound(phone, channel_id)
+            services.on_outbound(phone, channel_id, chat_type)
         else:
-            services.on_inbound(phone, channel_id)
+            services.on_inbound(phone, channel_id, chat_type)
 
     return Response({"ok": True})
 
