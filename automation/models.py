@@ -49,17 +49,17 @@ class AutomationConfig(models.Model):
 
 
 class ReminderMessage(models.Model):
-    FIRST = "first"
-    SECOND = "second"
-    REACTIVATION = "reactivation"
+    FIRST = "Первое напоминание"
+    SECOND = "Второе напоминание"
+    REACTIVATION = "Реактивация"
 
     STAGE_CHOICES = [
-        (FIRST, "Первое напоминание"),
-        (SECOND, "Второе напоминание"),
-        (REACTIVATION, "Реактивация"),
+        (FIRST, FIRST),
+        (SECOND, SECOND),
+        (REACTIVATION, REACTIVATION),
     ]
 
-    stage = models.CharField(max_length=20, choices=STAGE_CHOICES, verbose_name="Этап")
+    stage = models.CharField(max_length=50, choices=STAGE_CHOICES, verbose_name="Этап")
     text = models.TextField(blank=True, verbose_name="Текст сообщения")
     image_url = models.URLField(blank=True, verbose_name="URL изображения")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
