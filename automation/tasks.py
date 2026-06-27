@@ -16,6 +16,23 @@ def _schedule_next(lead, task_fn, delay_minutes: int):
     lead.save(update_fields=["task_id", "updated_at"])
 
 
+def _seconds_until_window(hour_start: int = 10, hour_end: int = 20) -> int:
+    """Возвращает 0 если сейчас в окне hour_start–hour_end (Алматы), иначе секунды до открытия."""
+    from django.utils import timezone
+    from datetime import timedelta
+
+    now = timezone.localtime()  # переводим UTC → Asia/Almaty (TIME_ZONE из settings)
+    if hour_start <= now.hour < hour_end:
+        return 0
+    if now.hour >= hour_end:
+        next_open = (now + timedelta(days=1)).replace(
+            hour=hour_start, minute=0, second=0, microsecond=0
+        )
+    else:
+        next_open = now.replace(hour=hour_start, minute=0, second=0, microsecond=0)
+    return max(0, int((next_open - now).total_seconds()))
+
+
 @shared_task
 def check_client_response(lead_id: str):
     """Срабатывает через manager_reply_wait минут после ответа менеджера."""
@@ -71,6 +88,8 @@ def send_first_reminder(lead_id: str):
 
 @shared_task
 def send_second_reminder(lead_id: str):
+    from django.utils import timezone
+    from datetime import timedelta
     from .models import LeadAutomation, AutomationConfig, ReminderMessage
     from .integrations import WazzUp
 
@@ -82,13 +101,19 @@ def send_second_reminder(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
+    # Отправляем только в окне 10:00–20:00 по Алматы
+    wait = _seconds_until_window(hour_start=10, hour_end=20)
+    if wait > 0:
+        task = send_second_reminder.apply_async(args=[lead_id], countdown=wait)
+        lead.task_id = task.id
+        lead.save(update_fields=["task_id", "updated_at"])
+        return
+
     text = ReminderMessage.random_for(ReminderMessage.SECOND)
     if text:
         WazzUp().send_message(lead.phone, text, lead.channel_id)
 
     # Закрываем ровно через close_delay минут с момента создания лида
-    from django.utils import timezone
-    from datetime import timedelta
     config = AutomationConfig.get()
     close_at = lead.created_at + timedelta(minutes=config.close_delay)
     countdown = max(0, (close_at - timezone.now()).total_seconds())
