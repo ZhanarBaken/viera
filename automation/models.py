@@ -73,8 +73,12 @@ class ReminderMessage(models.Model):
 
     @classmethod
     def random_for(cls, stage: str) -> "ReminderMessage | None":
-        messages = list(cls.objects.filter(stage=stage, is_active=True))
-        return random.choice(messages) if messages else None
+        qs = cls.objects.filter(stage=stage, is_active=True)
+        texts = list(qs.filter(image_url=""))
+        images = list(qs.exclude(image_url=""))
+        # Каждая группа (тексты и мемы) — один равнозначный слот
+        pool = texts + ([random.choice(images)] if images else [])
+        return random.choice(pool) if pool else None
 
 
 class LeadAutomation(models.Model):
