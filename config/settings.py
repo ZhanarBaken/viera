@@ -84,5 +84,7 @@ WAZZUP_CHANNEL_IDS = set(env.list("WAZZUP_CHANNEL_IDS"))
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = env("TELEGRAM_CHAT_ID")
 
-# DRY_RUN=True → WazzUp.send_message logs instead of hitting the real API
+# DRY_RUN=True → все операции только логируются
+# DRY_RUN_EXCEPTIONS — номера телефонов (только цифры), для которых боевой режим даже при DRY_RUN
 DRY_RUN = env.bool("DRY_RUN", default=False)
+DRY_RUN_EXCEPTIONS = {"".join(c for c in p if c.isdigit()) for p in env.list("DRY_RUN_EXCEPTIONS", default=[])}

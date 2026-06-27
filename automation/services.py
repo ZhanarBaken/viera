@@ -72,7 +72,7 @@ def on_inbound(phone: str, channel_id: str = ""):
         if crm.get_lead_status_id(lead.lead_id) != str(settings.AMOCRM_STAGE_DRIP_ID):
             return
         lead.cancel_pending_task()
-        crm.move_to_human(lead.lead_id)
+        crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
         Telegram().notify(

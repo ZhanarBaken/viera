@@ -53,7 +53,7 @@ def check_client_response(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    crm.move_to_drip(lead_id)
+    crm.move_to_drip(lead_id, phone=lead.phone)
     lead.status = LeadAutomation.DRIP
     config = AutomationConfig.get()
     _schedule_next(lead, send_first_reminder, config.first_reminder_delay)
@@ -135,7 +135,7 @@ def close_lead(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    AmoCRM().close_lead(lead_id)
+    AmoCRM().close_lead(lead_id, phone=lead.phone)
     lead.status = LeadAutomation.CLOSED
 
     config = AutomationConfig.get()

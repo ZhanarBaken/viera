@@ -6,6 +6,16 @@ from django.conf import settings
 logger = logging.getLogger(__name__)
 
 
+def _is_dry_run(phone: str = "") -> bool:
+    """Возвращает True если нужен режим логирования (не слать реальные запросы)."""
+    if not settings.DRY_RUN:
+        return False
+    clean = "".join(c for c in phone if c.isdigit())
+    if clean and clean in settings.DRY_RUN_EXCEPTIONS:
+        return False
+    return True
+
+
 class AmoCRM:
     def __init__(self):
         self._base = f"https://{settings.AMOCRM_DOMAIN}/api/v4"
@@ -43,8 +53,8 @@ class AmoCRM:
     def get_lead_status_id(self, lead_id: str) -> str | None:
         return self.get_lead_info(lead_id)["status_id"]
 
-    def move_to_drip(self, lead_id: str):
-        if settings.DRY_RUN:
+    def move_to_drip(self, lead_id: str, phone: str = ""):
+        if _is_dry_run(phone):
             logger.info("[DRY_RUN] move_to_drip lead_id=%s", lead_id)
             return
         self._patch(f"/leads/{lead_id}", {
@@ -52,8 +62,8 @@ class AmoCRM:
             "status_id": settings.AMOCRM_STAGE_DRIP_ID,
         })
 
-    def move_to_human(self, lead_id: str):
-        if settings.DRY_RUN:
+    def move_to_human(self, lead_id: str, phone: str = ""):
+        if _is_dry_run(phone):
             logger.info("[DRY_RUN] move_to_human lead_id=%s", lead_id)
             return
         self._patch(f"/leads/{lead_id}", {
@@ -61,8 +71,8 @@ class AmoCRM:
             "status_id": settings.AMOCRM_STAGE_HUMAN_ID,
         })
 
-    def close_lead(self, lead_id: str, note: str = "Не вышел на связь"):
-        if settings.DRY_RUN:
+    def close_lead(self, lead_id: str, note: str = "Не вышел на связь", phone: str = ""):
+        if _is_dry_run(phone):
             logger.info("[DRY_RUN] close_lead lead_id=%s note=%r", lead_id, note)
             return
         self._patch(f"/leads/{lead_id}", {"status_id": 143})
@@ -81,7 +91,7 @@ class WazzUp:
         }
 
     def send_message(self, phone: str, text: str, channel_id: str, image_url: str = ""):
-        if settings.DRY_RUN:
+        if _is_dry_run(phone):
             logger.info("[DRY_RUN] send_message to=%s channel=%s text=%r image_url=%s", phone, channel_id, text, image_url)
             return
         payload = {
