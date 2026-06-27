@@ -80,21 +80,20 @@ class WazzUp:
             "Content-Type": "application/json",
         }
 
-    def send_message(self, phone: str, text: str, channel_id: str):
+    def send_message(self, phone: str, text: str, channel_id: str, image_url: str = ""):
         if settings.DRY_RUN:
-            logger.info("[DRY_RUN] send_message to=%s channel=%s text=%r", phone, channel_id, text)
+            logger.info("[DRY_RUN] send_message to=%s channel=%s text=%r image_url=%s", phone, channel_id, text, image_url)
             return
-        r = requests.post(
-            f"{self._BASE}/message",
-            json={
-                "channelId": channel_id,
-                "chatType": "whatsapp",
-                "chatId": "".join(c for c in phone if c.isdigit()),
-                "text": text,
-            },
-            headers=self._headers,
-            timeout=10,
-        )
+        payload = {
+            "channelId": channel_id,
+            "chatType": "whatsapp",
+            "chatId": "".join(c for c in phone if c.isdigit()),
+        }
+        if image_url:
+            payload["contentUri"] = image_url
+        if text:
+            payload["text"] = text
+        r = requests.post(f"{self._BASE}/message", json=payload, headers=self._headers, timeout=10)
         r.raise_for_status()
         return r.json()
 

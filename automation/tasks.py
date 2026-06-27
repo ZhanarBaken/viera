@@ -78,9 +78,9 @@ def send_first_reminder(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    text = ReminderMessage.random_for(ReminderMessage.FIRST)
-    if text:
-        WazzUp().send_message(lead.phone, text, lead.channel_id)
+    msg = ReminderMessage.random_for(ReminderMessage.FIRST)
+    if msg:
+        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url)
 
     config = AutomationConfig.get()
     _schedule_next(lead, send_second_reminder, config.second_reminder_delay)
@@ -109,9 +109,9 @@ def send_second_reminder(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    text = ReminderMessage.random_for(ReminderMessage.SECOND)
-    if text:
-        WazzUp().send_message(lead.phone, text, lead.channel_id)
+    msg = ReminderMessage.random_for(ReminderMessage.SECOND)
+    if msg:
+        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url)
 
     # Закрываем ровно через close_delay минут с момента создания лида
     config = AutomationConfig.get()
@@ -165,9 +165,9 @@ def send_reactivation(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    text = ReminderMessage.random_for(ReminderMessage.REACTIVATION)
-    if text:
-        WazzUp().send_message(lead.phone, text, lead.channel_id)
+    msg = ReminderMessage.random_for(ReminderMessage.REACTIVATION)
+    if msg:
+        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url)
 
     lead.task_id = ""
     lead.save(update_fields=["task_id", "updated_at"])

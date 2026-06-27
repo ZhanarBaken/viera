@@ -60,7 +60,8 @@ class ReminderMessage(models.Model):
     ]
 
     stage = models.CharField(max_length=20, choices=STAGE_CHOICES, verbose_name="Этап")
-    text = models.TextField(verbose_name="Текст сообщения")
+    text = models.TextField(blank=True, verbose_name="Текст сообщения")
+    image_url = models.URLField(blank=True, verbose_name="URL изображения")
     is_active = models.BooleanField(default=True, verbose_name="Активен")
 
     class Meta:
@@ -71,8 +72,8 @@ class ReminderMessage(models.Model):
         return f"{self.get_stage_display()}: {self.text[:60]}…"
 
     @classmethod
-    def random_for(cls, stage: str) -> str | None:
-        messages = list(cls.objects.filter(stage=stage, is_active=True).values_list("text", flat=True))
+    def random_for(cls, stage: str) -> "ReminderMessage | None":
+        messages = list(cls.objects.filter(stage=stage, is_active=True))
         return random.choice(messages) if messages else None
 
 
