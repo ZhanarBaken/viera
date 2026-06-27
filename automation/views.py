@@ -40,34 +40,57 @@ def wazzup_webhook(request):
 @api_view(["POST"])
 def amocrm_webhook(request):
     """
-    Два события из AmoCRM:
-    - leads[add]  → новый лид создан
-    - note[add] с note_type=10 → менеджер отправил исходящее сообщение клиенту
+    AmoCRM шлёт form-encoded с PHP-стилем скобок: leads[add][0][id]=...
+    DRF парсит это как плоский dict — используем _amo_* хелперы для извлечения.
     """
-    data = request.data
-    logger.debug("AmoCRM webhook: %s", data)
+    data = dict(request.data)  # QueryDict → обычный dict
+    logger.info("AmoCRM webhook raw: %s", data)
 
     # Новый лид
-    for lead in data.get("leads", {}).get("add", []):
-        lead_id = str(lead.get("id", ""))
-        phone = _extract_amo_phone(data)
-        if lead_id and phone:
+    for lead_id in _amo_lead_ids(data):
+        phone = _amo_phone(data)
+        logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
+        if phone:
             services.on_new_lead(lead_id, phone)
 
-
     return Response({"ok": True})
+
+
+def _amo_lead_ids(data: dict) -> list[str]:
+    """Извлечь все id из leads[add][N][id]."""
+    ids = []
+    i = 0
+    while True:
+        raw = data.get(f"leads[add][{i}][id]")
+        if raw is None:
+            break
+        # QueryDict может вернуть список если ключ встречается несколько раз
+        val = raw[0] if isinstance(raw, list) else raw
+        if val:
+            ids.append(str(val))
+        i += 1
+    return ids
+
+
+def _amo_phone(data: dict) -> str:
+    """Извлечь телефон из contacts[add][N][custom_fields][M][values][0][value]."""
+    i = 0
+    while f"contacts[add][{i}][id]" in data:
+        j = 0
+        while f"contacts[add][{i}][custom_fields][{j}][code]" in data:
+            raw_code = data.get(f"contacts[add][{i}][custom_fields][{j}][code]", "")
+            code = raw_code[0] if isinstance(raw_code, list) else raw_code
+            if code == "PHONE":
+                raw_val = data.get(f"contacts[add][{i}][custom_fields][{j}][values][0][value]", "")
+                val = raw_val[0] if isinstance(raw_val, list) else raw_val
+                digits = "".join(c for c in val if c.isdigit())
+                if digits:
+                    return digits
+            j += 1
+        i += 1
+    return ""
 
 
 def _extract_phone(message: dict) -> str:
     raw = message.get("contact", {}).get("phone") or message.get("chatId", "")
     return "".join(c for c in raw if c.isdigit())
-
-
-def _extract_amo_phone(data: dict) -> str:
-    for contact in data.get("contacts", {}).get("add", []):
-        for field in contact.get("custom_fields", []):
-            if field.get("code") == "PHONE":
-                values = field.get("values", [])
-                if values:
-                    return "".join(c for c in values[0].get("value", "") if c.isdigit())
-    return ""
