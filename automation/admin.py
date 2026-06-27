@@ -30,13 +30,18 @@ class AutomationConfigAdmin(admin.ModelAdmin):
 
 @admin.register(ReminderMessage)
 class ReminderMessageAdmin(admin.ModelAdmin):
-    list_display = ["stage", "short_text", "is_active"]
+    list_display = ["stage", "short_content", "is_active"]
     list_filter = ["stage", "is_active"]
     list_editable = ["is_active"]
 
-    @admin.display(description="Текст")
-    def short_text(self, obj):
-        return obj.text[:80] + "…" if len(obj.text) > 80 else obj.text
+    @admin.display(description="Содержимое")
+    def short_content(self, obj):
+        if obj.text:
+            return obj.text[:80] + "…" if len(obj.text) > 80 else obj.text
+        if obj.image_url:
+            name = obj.image_url.split("/")[-1]
+            return f"🖼 {name}"
+        return "—"
 
 
 @admin.register(LeadAutomation)
