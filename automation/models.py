@@ -54,9 +54,9 @@ class ReminderMessage(models.Model):
     REACTIVATION = "reactivation"
 
     STAGE_CHOICES = [
-        (FIRST, "Первое напоминание (через 1ч40мин)"),
-        (SECOND, "Второе напоминание (через 6ч, только 10:00–20:00)"),
-        (REACTIVATION, "Реактивация (через 7 дней)"),
+        (FIRST, "Первое напоминание"),
+        (SECOND, "Второе напоминание"),
+        (REACTIVATION, "Реактивация"),
     ]
 
     stage = models.CharField(max_length=20, choices=STAGE_CHOICES, verbose_name="Этап")
