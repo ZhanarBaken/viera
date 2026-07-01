@@ -55,12 +55,12 @@ class AmoCRM:
         return self.get_lead_info(lead_id)["status_id"]
 
     def get_lead_talk_id(self, lead_id: str) -> str:
-        """Получить amojo talk_id для лида (нужен для отправки сообщений в Instagram DM)."""
+        """Получить amojo talk_id для лида через /talks endpoint."""
         try:
-            data = self._get(f"/leads/{lead_id}", params={"with": "chats"})
-            chats = data.get("_embedded", {}).get("chats", [])
-            if chats:
-                return str(chats[0].get("id", ""))
+            data = self._get("/talks", params={"entity_id": lead_id, "entity_type": "leads", "limit": 250})
+            for talk in data.get("_embedded", {}).get("talks", []):
+                if str(talk.get("entity_id")) == str(lead_id) and talk.get("origin") == "instagram_business":
+                    return str(talk.get("talk_id", ""))
         except Exception:
             logger.exception("AmoCRM get_lead_talk_id failed for lead_id=%s", lead_id)
         return ""
