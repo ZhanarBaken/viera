@@ -78,6 +78,7 @@ def check_client_response(lead_id: str):
 
     crm.move_to_drip(lead_id, phone=lead.phone)
     lead.status = LeadAutomation.DRIP
+    lead.save(update_fields=["status", "updated_at"])
     config = AutomationConfig.get()
     _schedule_next(lead, send_first_reminder, config.first_reminder_delay)
 
