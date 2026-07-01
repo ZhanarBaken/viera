@@ -137,7 +137,7 @@ def on_outbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     lead.save()
 
 
-def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
+def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", client_name: str = ""):
     """Клиент написал нам (WazzUp inbound) — ищем его активный лид."""
     lead = (
         LeadAutomation.objects
@@ -150,6 +150,9 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         return
 
     _save_channel(lead, channel_id, chat_type)
+    if client_name and not lead.client_name:
+        lead.client_name = client_name
+        lead.save(update_fields=["client_name"])
 
     if lead.status == LeadAutomation.WAITING:
         lead.cancel_pending_task()

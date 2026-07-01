@@ -33,11 +33,12 @@ def wazzup_webhook(request):
             continue
 
         save_message(phone, message)
+        client_name = message.get("contact", {}).get("name", "")
 
         if message.get("isEcho", False):
             services.on_outbound(phone, channel_id, chat_type)
         else:
-            services.on_inbound(phone, channel_id, chat_type)
+            services.on_inbound(phone, channel_id, chat_type, client_name=client_name)
 
     return Response({"ok": True})
 
