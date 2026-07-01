@@ -79,7 +79,6 @@ AMOCRM_STAGE_HUMAN_ID = env.int("AMOCRM_STAGE_HUMAN_ID")
 AMOCRM_ALLOWED_STAGE_IDS = set(env.list("AMOCRM_ALLOWED_STAGE_IDS", default=["142"]))
 
 WAZZUP_TOKEN = env("WAZZUP_TOKEN")
-WAZZUP_CHANNEL_IDS = set(env.list("WAZZUP_CHANNEL_IDS"))
 
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = env("TELEGRAM_CHAT_ID")
@@ -111,7 +110,7 @@ AMOCRM_USER_TELEGRAM = {
     1111114: "@pada_d",      # Дильназ Ермуханова
 }
 
-# WazzUp channel_id → название канала для уведомлений
+# WazzUp channel_id → название канала для уведомлений (единственный источник истины)
 WAZZUP_CHANNEL_NAMES = {
     "05cd5d01-6b07-4b36-bfde-e5e6f687fc5f": "viera.brand (Instagram)",
     "10d61890-57a8-4334-9b38-a45043d62c10": "WhatsApp 77078531646",
@@ -120,3 +119,4 @@ WAZZUP_CHANNEL_NAMES = {
     "7dfe7c7c-0e21-4ac8-88cd-ef2541d47277": "WhatsApp 77008007069",
     "e1433116-b5c7-4974-ba06-1761b0c57b78": "WhatsApp 77470458115",
 }
+WAZZUP_CHANNEL_IDS = set(WAZZUP_CHANNEL_NAMES.keys())
