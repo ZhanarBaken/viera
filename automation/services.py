@@ -1,8 +1,11 @@
 """Business logic — вызывается из views, не знает про HTTP."""
+import logging
 from django.conf import settings
 from .models import LeadAutomation, AutomationConfig
 from .integrations import AmoCRM, WazzUp, Telegram
 from . import tasks
+
+logger = logging.getLogger(__name__)
 
 
 def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, amojo_talk_id: str = "", client_name: str = "", chat_type: str = ""):
@@ -67,6 +70,29 @@ def _save_channel(lead: LeadAutomation, channel_id: str, chat_type: str = ""):
         fields.append("chat_type")
     if fields:
         lead.save(update_fields=fields)
+
+
+def link_instagram_lead_id(lead_id: str, channel_id: str):
+    """Привязать lead_id к WazzUp Instagram LeadAutomation созданному из вебхука (без lead_id)."""
+    from django.utils import timezone
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(minutes=10)
+    lead = (
+        LeadAutomation.objects
+        .filter(
+            channel_id=channel_id,
+            chat_type=LeadAutomation.INSTAGRAM,
+            source=LeadAutomation.WAZZUP,
+            lead_id=None,
+            created_at__gte=cutoff,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if lead:
+        lead.lead_id = lead_id
+        lead.save(update_fields=["lead_id", "updated_at"])
+        logger.info("Linked lead_id=%s to WazzUp Instagram lead phone=%s", lead_id, lead.phone)
 
 
 def on_outbound_by_talk_id(talk_id: str):
@@ -150,6 +176,16 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", cl
         .first()
     )
     if lead is None:
+        if chat_type == LeadAutomation.INSTAGRAM and channel_id:
+            LeadAutomation.objects.create(
+                lead_id=None,
+                phone=phone,
+                status=LeadAutomation.NEW,
+                source=LeadAutomation.WAZZUP,
+                channel_id=channel_id,
+                chat_type=chat_type,
+                client_name=client_name or "",
+            )
         return
 
     _save_channel(lead, channel_id, chat_type)

@@ -143,7 +143,7 @@ class WazzUp:
             "Content-Type": "application/json",
         }
 
-    def get_channel_name(self, channel_id: str) -> str:
+    def _load_channels(self):
         global _wazzup_channel_names
         if not _wazzup_channel_names:
             try:
@@ -155,8 +155,18 @@ class WazzUp:
                     if "channelId" in ch
                 }
             except Exception:
-                logger.exception("WazzUp get_channel_name failed")
+                logger.exception("WazzUp _load_channels failed")
+
+    def get_channel_name(self, channel_id: str) -> str:
+        self._load_channels()
         return _wazzup_channel_names.get(channel_id, channel_id)
+
+    def get_channel_id_by_name(self, name: str) -> str:
+        self._load_channels()
+        for cid, cname in _wazzup_channel_names.items():
+            if cname == name:
+                return cid
+        return ""
 
     def send_message(self, phone: str, text: str, channel_id: str, image_url: str = "", chat_type: str = "whatsapp"):
         if _is_dry_run(phone):

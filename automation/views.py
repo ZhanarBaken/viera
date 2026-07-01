@@ -92,6 +92,11 @@ def amocrm_webhook(request):
         logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
         if phone:
             services.on_new_lead(lead_id, phone)
+        else:
+            channel_id = _wz_instagram_channel(data)
+            if channel_id:
+                logger.info("WazzUp Instagram lead: lead_id=%s channel_id=%s", lead_id, channel_id)
+                services.link_instagram_lead_id(lead_id, channel_id)
 
     return Response({"ok": True})
 
@@ -135,6 +140,23 @@ def _amo_phone(data: dict) -> str:
                 if digits:
                     return digits
             j += 1
+        i += 1
+    return ""
+
+
+def _wz_instagram_channel(data: dict) -> str:
+    """Извлечь channel_id из тега 'WZ (viera.brand)' в leads[add]."""
+    from .integrations import WazzUp
+    i = 0
+    while True:
+        tag = _amo_val(data, f"leads[add][0][tags][{i}][name]")
+        if not tag:
+            break
+        if tag.startswith("WZ (") and tag.endswith(")"):
+            channel_name = tag[4:-1]
+            channel_id = WazzUp().get_channel_id_by_name(channel_name)
+            if channel_id:
+                return channel_id
         i += 1
     return ""
 
