@@ -55,6 +55,9 @@ def on_outbound_by_talk_id(talk_id: str):
     lead = _get_active_lead_by_talk_id(talk_id)
     if lead is None or not lead.lead_id:
         return
+    # Viera Swim — автоматика отключена, ждём решения руководства
+    if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
+        return
     lead.cancel_pending_task()
     lead.status = LeadAutomation.WAITING
     config = AutomationConfig.get()
