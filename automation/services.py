@@ -38,6 +38,12 @@ def _get_active_lead(phone: str) -> LeadAutomation | None:
     )
 
 
+def _channel_name(lead: LeadAutomation) -> str:
+    if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
+        return "Viera Swim (Instagram Business)"
+    return WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "неизвестен"
+
+
 def _save_channel(lead: LeadAutomation, channel_id: str, chat_type: str = ""):
     fields = []
     if channel_id and not lead.channel_id:
@@ -54,9 +60,6 @@ def on_outbound_by_talk_id(talk_id: str):
     """Менеджер написал клиенту через AmoCRM Instagram DM."""
     lead = _get_active_lead_by_talk_id(talk_id)
     if lead is None or not lead.lead_id:
-        return
-    # Viera Swim — автоматика отключена, ждём решения руководства
-    if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
         return
     lead.cancel_pending_task()
     lead.status = LeadAutomation.WAITING
@@ -95,7 +98,7 @@ def on_inbound_by_talk_id(talk_id: str):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        channel_name = WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "Viera Swim"
+        channel_name = _channel_name(lead)
         Telegram().notify(
             f"💬 Клиент ответил!\n"
             f"Лид: {lead.lead_id}\n"
@@ -151,7 +154,7 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        channel_name = WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "неизвестен"
+        channel_name = _channel_name(lead)
         Telegram().notify(
             f"💬 Клиент ответил!\n"
             f"Лид: {lead.lead_id}\n"

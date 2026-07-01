@@ -8,9 +8,13 @@ from celery import shared_task
 def _send_message(lead, msg):
     """Отправить сообщение клиенту через правильный канал."""
     from .models import LeadAutomation
-    from .integrations import WazzUp, AmoCRM
+    from .integrations import WazzUp, Telegram
     if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
-        AmoCRM().send_chat_message(lead.amojo_talk_id, msg.text, image_url=msg.image_url, phone=lead.phone)
+        Telegram().notify(
+            f"📨 Отправьте напоминание вручную в Viera Swim (Instagram)\n"
+            f"Лид: {lead.lead_id}\n\n"
+            f"Текст:\n{msg.text}"
+        )
     else:
         WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
 
