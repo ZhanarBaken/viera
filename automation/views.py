@@ -48,33 +48,34 @@ def amocrm_webhook(request):
     data = dict(request.data)
     logger.info("=== AMOCRM WEBHOOK === keys=%s data=%s", list(data.keys()), data)
 
-    # Чат-события amojo (Instagram Business)
-    talk_id = _amo_val(data, "talk_id") or _amo_val(data, "message[talk_id]")
-    if talk_id:
-        event_type = _amo_val(data, "type") or _amo_val(data, "message[type]")
-        logger.info("AMOCRM CHAT EVENT: talk_id=%s type=%s", talk_id, event_type)
-        if event_type == "inbound":
-            services.on_inbound_by_talk_id(talk_id)
-        elif event_type == "outbound":
-            services.on_outbound_by_talk_id(talk_id)
+    # Сообщение в чате (message[add]) — срабатывает для всех каналов
+    msg_talk_id = _amo_val(data, "message[add][0][talk_id]")
+    if msg_talk_id:
+        origin = _amo_val(data, "message[add][0][origin]")
+        if origin == "instagram_business":
+            msg_type = _amo_val(data, "message[add][0][type]")   # incoming / outgoing
+            lead_id = _amo_val(data, "message[add][0][element_id]")
+            logger.info("INSTAGRAM BUSINESS: talk_id=%s type=%s lead_id=%s", msg_talk_id, msg_type, lead_id)
+            if msg_type == "incoming":
+                from .models import LeadAutomation
+                existing = LeadAutomation.objects.filter(amojo_talk_id=msg_talk_id).first()
+                if existing:
+                    services.on_inbound_by_talk_id(msg_talk_id)
+                elif lead_id:
+                    services.on_new_lead(lead_id, phone=lead_id, source="amocrm_instagram", amojo_talk_id=msg_talk_id)
+            elif msg_type == "outgoing":
+                services.on_outbound_by_talk_id(msg_talk_id)
         else:
-            logger.info("AMOCRM CHAT EVENT: unknown type, ignoring")
+            logger.info("CHAT MESSAGE: origin=%s — ignoring (handled by WazzUp)", origin)
         return Response({"ok": True})
 
-    # Новый лид (leads[add]) — срабатывает когда лид принят из Неразобранного и попал в НОВАЯ ЗАЯВКА
+    # Новый лид (leads[add]) — WazzUp каналы
     crm = AmoCRM()
     for lead_id in _amo_lead_ids(data):
-        source_uid = _amo_val(data, f"leads[add][0][source_uid]")
-        if source_uid and "amojo:instagram_business" in source_uid:
-            talk_id = crm.get_lead_talk_id(lead_id)
-            logger.info("AmoCRM Instagram lead: lead_id=%s talk_id=%s", lead_id, talk_id or "(not found)")
-            if talk_id:
-                services.on_new_lead(lead_id, phone=lead_id, source="amocrm_instagram", amojo_talk_id=talk_id)
-        else:
-            phone = _amo_phone(data) or crm.get_lead_phone(lead_id)
-            logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
-            if phone:
-                services.on_new_lead(lead_id, phone)
+        phone = _amo_phone(data) or crm.get_lead_phone(lead_id)
+        logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
+        if phone:
+            services.on_new_lead(lead_id, phone)
 
     return Response({"ok": True})
 
