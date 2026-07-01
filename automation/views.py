@@ -69,6 +69,16 @@ def amocrm_webhook(request):
             logger.info("CHAT MESSAGE: origin=%s — ignoring (handled by WazzUp)", origin)
         return Response({"ok": True})
 
+    # Менеджер написал клиенту в Instagram Business (talk[update] is_in_work=1)
+    upd_talk_id = _amo_val(data, "talk[update][0][talk_id]")
+    if upd_talk_id:
+        origin = _amo_val(data, "talk[update][0][origin]")
+        is_in_work = _amo_val(data, "talk[update][0][is_in_work]")
+        if origin == "instagram_business" and is_in_work == "1":
+            logger.info("INSTAGRAM BUSINESS manager reply: talk_id=%s", upd_talk_id)
+            services.on_outbound_by_talk_id(upd_talk_id)
+        return Response({"ok": True})
+
     # Новый лид (leads[add]) — WazzUp каналы
     crm = AmoCRM()
     for lead_id in _amo_lead_ids(data):
