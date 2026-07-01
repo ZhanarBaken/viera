@@ -95,12 +95,12 @@ def on_inbound_by_talk_id(talk_id: str):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        mention = settings.AMOCRM_USER_TELEGRAM.get(info["responsible_user_id"], "")
+        channel_name = settings.WAZZUP_CHANNEL_NAMES.get(lead.channel_id, lead.chat_type or "Viera Swim")
         Telegram().notify(
             f"💬 Клиент ответил!\n"
             f"Лид: {lead.lead_id}\n"
+            f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
-            + (f"\nОтветственный: {mention}" if mention else "")
         )
 
 
@@ -151,11 +151,10 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        mention = settings.AMOCRM_USER_TELEGRAM.get(info["responsible_user_id"], "")
+        channel_name = settings.WAZZUP_CHANNEL_NAMES.get(lead.channel_id, lead.chat_type or "неизвестен")
         Telegram().notify(
             f"💬 Клиент ответил!\n"
-            f"Телефон: +{phone}\n"
             f"Лид: {lead.lead_id}\n"
+            f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
-            + (f"\nОтветственный: {mention}" if mention else "")
         )

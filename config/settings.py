@@ -110,3 +110,13 @@ AMOCRM_USER_TELEGRAM = {
     1111113: "@gulie01",     # Гулшат Талгат
     1111114: "@pada_d",      # Дильназ Ермуханова
 }
+
+# WazzUp channel_id → название канала для уведомлений
+WAZZUP_CHANNEL_NAMES = {
+    "05cd5d01-6b07-4b36-bfde-e5e6f687fc5f": "viera.brand (Instagram)",
+    "10d61890-57a8-4334-9b38-a45043d62c10": "WhatsApp 77078531646",
+    "170728b6-4479-477d-9de9-ab49716032a7": "viera.astana (Instagram)",
+    "215eabdb-d281-43a9-b5ea-3ddcd4be4f3a": "viera.shymkent (Instagram)",
+    "7dfe7c7c-0e21-4ac8-88cd-ef2541d47277": "WhatsApp 77008007069",
+    "e1433116-b5c7-4974-ba06-1761b0c57b78": "WhatsApp 77470458115",
+}
