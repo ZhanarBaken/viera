@@ -84,6 +84,18 @@ class AmoCRM:
         r.raise_for_status()
         return r.json()
 
+    def get_lead_wz_channel_id(self, lead_id: str) -> str:
+        """Получить WazzUp channel_id по WZ тегу на лиде."""
+        try:
+            data = self._get(f"/leads/{lead_id}")
+            for tag in data.get("_embedded", {}).get("tags", []):
+                name = tag.get("name", "")
+                if name.startswith("WZ (") and name.endswith(")"):
+                    return WazzUp().get_channel_id_by_name(name[4:-1])
+        except Exception:
+            logger.exception("get_lead_wz_channel_id failed for lead_id=%s", lead_id)
+        return ""
+
     def get_lead_phone(self, lead_id: str) -> str:
         """Получить телефон клиента по lead_id через API (для повторных клиентов)."""
         try:

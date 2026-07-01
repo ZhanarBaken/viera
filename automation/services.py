@@ -72,6 +72,33 @@ def _save_channel(lead: LeadAutomation, channel_id: str, chat_type: str = ""):
         lead.save(update_fields=fields)
 
 
+def link_lead_id_by_phone(lead_id: str, phone: str) -> bool:
+    """Привязать lead_id к WazzUp WhatsApp LeadAutomation созданному из вебхука (без lead_id)."""
+    from django.utils import timezone
+    from datetime import timedelta
+    cutoff = timezone.now() - timedelta(minutes=10)
+    lead = (
+        LeadAutomation.objects
+        .filter(
+            phone=phone,
+            source=LeadAutomation.WAZZUP,
+            lead_id=None,
+            created_at__gte=cutoff,
+        )
+        .order_by("-created_at")
+        .first()
+    )
+    if lead:
+        lead.lead_id = lead_id
+        logger.info("Linked lead_id=%s to WazzUp WhatsApp lead phone=%s", lead_id, phone)
+        if lead.status == LeadAutomation.WAITING:
+            _schedule_check(lead)
+        else:
+            lead.save(update_fields=["lead_id", "updated_at"])
+        return True
+    return False
+
+
 def link_instagram_lead_id(lead_id: str, channel_id: str):
     """Привязать lead_id к WazzUp Instagram LeadAutomation созданному из вебхука (без lead_id)."""
     from django.utils import timezone
@@ -95,19 +122,27 @@ def link_instagram_lead_id(lead_id: str, channel_id: str):
         logger.info("Linked lead_id=%s to WazzUp Instagram lead phone=%s", lead_id, lead.phone)
 
 
-def on_outbound_by_talk_id(talk_id: str):
-    """Менеджер написал клиенту через AmoCRM Instagram DM."""
-    lead = _get_active_lead_by_talk_id(talk_id)
-    if lead is None or not lead.lead_id:
-        return
-    lead.cancel_pending_task()
-    lead.status = LeadAutomation.WAITING
+def _schedule_check(lead: LeadAutomation):
+    """Запустить таймер ожидания ответа клиента. lead.lead_id должен быть установлен."""
     config = AutomationConfig.get()
     task = tasks.check_client_response.apply_async(
         args=[lead.lead_id], countdown=config.manager_reply_wait * 60
     )
     lead.task_id = task.id
     lead.save()
+
+
+def on_outbound_by_talk_id(talk_id: str):
+    """Менеджер написал клиенту через AmoCRM Instagram DM."""
+    lead = _get_active_lead_by_talk_id(talk_id)
+    if lead is None:
+        return
+    lead.cancel_pending_task()
+    lead.status = LeadAutomation.WAITING
+    if not lead.lead_id:
+        lead.save()
+        return
+    _schedule_check(lead)
 
 
 def on_inbound_by_talk_id(talk_id: str):
@@ -151,19 +186,17 @@ def on_inbound_by_talk_id(talk_id: str):
 def on_outbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     """Менеджер написал клиенту (WazzUp outbound) — запускаем таймер для активного лида."""
     lead = _get_active_lead(phone)
-    if lead is None or not lead.lead_id:
+    if lead is None:
         return
 
     _save_channel(lead, channel_id, chat_type)
     lead.cancel_pending_task()
     lead.status = LeadAutomation.WAITING
-
-    config = AutomationConfig.get()
-    task = tasks.check_client_response.apply_async(
-        args=[lead.lead_id], countdown=config.manager_reply_wait * 60
-    )
-    lead.task_id = task.id
-    lead.save()
+    if not lead.lead_id:
+        # lead_id ещё не привязан — сохраняем WAITING, задача запустится в link_lead_id_by_phone
+        lead.save()
+        return
+    _schedule_check(lead)
 
 
 def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", client_name: str = ""):
@@ -176,7 +209,7 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", cl
         .first()
     )
     if lead is None:
-        if chat_type == LeadAutomation.INSTAGRAM and channel_id:
+        if channel_id:
             LeadAutomation.objects.create(
                 lead_id=None,
                 phone=phone,
