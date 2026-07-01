@@ -100,8 +100,10 @@ def on_inbound_by_talk_id(talk_id: str):
         lead.status = LeadAutomation.HUMAN
         lead.save()
         channel_name = _channel_name(lead)
+        client = lead.client_name if lead.client_name else f"+{lead.phone}"
         Telegram().notify(
             f"💬 Клиент ответил!\n"
+            f"Клиент: {client}\n"
             f"Лид: {lead.lead_id}\n"
             f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
@@ -156,8 +158,10 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         lead.status = LeadAutomation.HUMAN
         lead.save()
         channel_name = _channel_name(lead)
+        client = lead.client_name if lead.client_name else f"+{phone}"
         Telegram().notify(
             f"💬 Клиент ответил!\n"
+            f"Клиент: {client}\n"
             f"Лид: {lead.lead_id}\n"
             f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
