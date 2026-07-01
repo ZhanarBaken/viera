@@ -40,11 +40,12 @@ class AmoCRM:
         return r.json()
 
     def get_lead_info(self, lead_id: str) -> dict:
-        """Возвращает pipeline_id и status_id одним запросом."""
+        """Возвращает pipeline_id, status_id и responsible_user_id одним запросом."""
         data = self._get(f"/leads/{lead_id}")
         return {
             "pipeline_id": data.get("pipeline_id"),
             "status_id": str(data.get("status_id", "")),
+            "responsible_user_id": data.get("responsible_user_id"),
         }
 
     def get_lead_pipeline_id(self, lead_id: str) -> int | None:
@@ -52,6 +53,55 @@ class AmoCRM:
 
     def get_lead_status_id(self, lead_id: str) -> str | None:
         return self.get_lead_info(lead_id)["status_id"]
+
+    def get_lead_talk_id(self, lead_id: str) -> str:
+        """Получить amojo talk_id для лида (нужен для отправки сообщений в Instagram DM)."""
+        try:
+            data = self._get(f"/leads/{lead_id}", params={"with": "chats"})
+            chats = data.get("_embedded", {}).get("chats", [])
+            if chats:
+                return str(chats[0].get("id", ""))
+        except Exception:
+            logger.exception("AmoCRM get_lead_talk_id failed for lead_id=%s", lead_id)
+        return ""
+
+    def send_chat_message(self, talk_id: str, text: str, image_url: str = "", phone: str = ""):
+        """Отправить сообщение в Instagram DM через AmoCRM Chat API."""
+        if _is_dry_run(phone):
+            logger.info("[DRY_RUN] send_chat_message talk_id=%s text=%r image_url=%s", talk_id, text, image_url)
+            return
+        payload = {}
+        if text:
+            payload["text"] = text
+        if image_url:
+            payload["attachment"] = {"type": "picture", "payload": {"url": image_url}}
+        r = requests.post(
+            f"{self._base}/talks/{talk_id}/messages",
+            json=payload,
+            headers=self._headers,
+            timeout=10,
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def get_lead_phone(self, lead_id: str) -> str:
+        """Получить телефон клиента по lead_id через API (для повторных клиентов)."""
+        try:
+            data = self._get(f"/leads/{lead_id}", params={"with": "contacts"})
+            contacts = data.get("_embedded", {}).get("contacts", [])
+            if not contacts:
+                return ""
+            contact_id = contacts[0]["id"]
+            contact = self._get(f"/contacts/{contact_id}")
+            for field in contact.get("custom_fields_values") or []:
+                if field.get("field_code") == "PHONE":
+                    for v in field.get("values", []):
+                        digits = "".join(c for c in str(v.get("value", "")) if c.isdigit())
+                        if digits:
+                            return digits
+        except Exception:
+            logger.exception("AmoCRM get_lead_phone failed for lead_id=%s", lead_id)
+        return ""
 
     def move_to_drip(self, lead_id: str, phone: str = ""):
         if _is_dry_run(phone):

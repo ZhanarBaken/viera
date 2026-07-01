@@ -20,11 +20,6 @@ class AutomationConfig(models.Model):
         verbose_name="Задержка второго напоминания (мин)",
         help_text="6 часов = 360. Отправляется только в 10:00–20:00 по Алматы, иначе откладывается до 10:00.",
     )
-    close_delay = models.PositiveIntegerField(
-        default=1440,
-        verbose_name="Закрыть через N минут с момента создания лида",
-        help_text="Сутки = 1440. Отсчёт идёт от момента когда лид впервые зафиксирован, не от последнего напоминания.",
-    )
     reactivation_delay = models.PositiveIntegerField(
         default=10080,
         verbose_name="Задержка реактивации (мин)",
@@ -100,10 +95,16 @@ class LeadAutomation(models.Model):
     INSTAGRAM = "instagram"
     CHAT_TYPE_CHOICES = [(WHATSAPP, "WhatsApp"), (INSTAGRAM, "Instagram")]
 
+    WAZZUP = "wazzup"
+    AMOCRM_INSTAGRAM = "amocrm_instagram"
+    SOURCE_CHOICES = [(WAZZUP, "WazzUp"), (AMOCRM_INSTAGRAM, "AmoCRM Instagram")]
+
     lead_id = models.CharField(max_length=50, unique=True, null=True, blank=True, verbose_name="ID лида AmoCRM")
     phone = models.CharField(max_length=50, db_index=True, verbose_name="Телефон / Chat ID клиента")
     channel_id = models.CharField(max_length=100, blank=True, verbose_name="ID канала WazzUp")
     chat_type = models.CharField(max_length=20, choices=CHAT_TYPE_CHOICES, default=WHATSAPP, verbose_name="Тип чата")
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=WAZZUP, verbose_name="Источник")
+    amojo_talk_id = models.CharField(max_length=100, blank=True, db_index=True, verbose_name="ID разговора AmoCRM")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, verbose_name="Статус")
     task_id = models.CharField(max_length=255, blank=True, verbose_name="ID задачи Celery")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создан")

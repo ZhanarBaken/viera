@@ -84,7 +84,29 @@ WAZZUP_CHANNEL_IDS = set(env.list("WAZZUP_CHANNEL_IDS"))
 TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = env("TELEGRAM_CHAT_ID")
 
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "INFO",
+    },
+}
+
 # DRY_RUN=True → все операции только логируются
 # DRY_RUN_EXCEPTIONS — номера телефонов (только цифры), для которых боевой режим даже при DRY_RUN
 DRY_RUN = env.bool("DRY_RUN", default=False)
 DRY_RUN_EXCEPTIONS = {"".join(c for c in p if c.isdigit()) for p in env.list("DRY_RUN_EXCEPTIONS", default=[])}
+
+# AmoCRM user_id → Telegram @username
+# Заменить 111111X на реальные ID из AmoCRM когда добавят пользователей
+AMOCRM_USER_TELEGRAM = {
+    12630334: "@akerkeemm",  # Акерке Абубакирова
+    1111111: "@mus1rova",    # Азиза Мусирова
+    1111112: "@Zhanelz",     # Жанеля Жарылкасимова
+    1111113: "@gulie01",     # Гулшат Талгат
+    1111114: "@pada_d",      # Дильназ Ермуханова
+}

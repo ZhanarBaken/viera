@@ -14,7 +14,6 @@ class AutomationConfigAdmin(admin.ModelAdmin):
                 "manager_reply_wait",
                 "first_reminder_delay",
                 "second_reminder_delay",
-                "close_delay",
                 "reactivation_delay",
             ],
             "description": "1ч = 60 | 1ч40мин = 100 | 6ч = 360 | 24ч = 1440 | 7 дней = 10080",

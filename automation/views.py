@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from . import services
 from .redis_store import save_message
+from .integrations import AmoCRM
 
 logger = logging.getLogger(__name__)
 
@@ -42,18 +43,48 @@ def amocrm_webhook(request):
     """
     AmoCRM шлёт form-encoded с PHP-стилем скобок: leads[add][0][id]=...
     DRF парсит это как плоский dict — используем _amo_* хелперы для извлечения.
+    Также обрабатывает события чата amojo (входящие/исходящие сообщения Instagram Business).
     """
-    data = dict(request.data)  # QueryDict → обычный dict
-    logger.info("AmoCRM webhook raw: %s", data)
+    data = dict(request.data)
+    logger.info("=== AMOCRM WEBHOOK === keys=%s data=%s", list(data.keys()), data)
 
-    # Новый лид
+    # Чат-события amojo (Instagram Business)
+    talk_id = _amo_val(data, "talk_id") or _amo_val(data, "message[talk_id]")
+    if talk_id:
+        event_type = _amo_val(data, "type") or _amo_val(data, "message[type]")
+        logger.info("AMOCRM CHAT EVENT: talk_id=%s type=%s", talk_id, event_type)
+        if event_type == "inbound":
+            services.on_inbound_by_talk_id(talk_id)
+        elif event_type == "outbound":
+            services.on_outbound_by_talk_id(talk_id)
+        else:
+            logger.info("AMOCRM CHAT EVENT: unknown type, ignoring")
+        return Response({"ok": True})
+
+    # Новый лид (leads[add]) — срабатывает когда лид принят из Неразобранного и попал в НОВАЯ ЗАЯВКА
+    crm = AmoCRM()
     for lead_id in _amo_lead_ids(data):
-        phone = _amo_phone(data)
-        logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
-        if phone:
-            services.on_new_lead(lead_id, phone)
+        source_uid = _amo_val(data, f"leads[add][0][source_uid]")
+        if source_uid and "amojo:instagram_business" in source_uid:
+            talk_id = crm.get_lead_talk_id(lead_id)
+            logger.info("AmoCRM Instagram lead: lead_id=%s talk_id=%s", lead_id, talk_id or "(not found)")
+            if talk_id:
+                services.on_new_lead(lead_id, phone=lead_id, source="amocrm_instagram", amojo_talk_id=talk_id)
+        else:
+            phone = _amo_phone(data) or crm.get_lead_phone(lead_id)
+            logger.info("AmoCRM new lead: lead_id=%s phone=%s", lead_id, phone or "(not found)")
+            if phone:
+                services.on_new_lead(lead_id, phone)
 
     return Response({"ok": True})
+
+
+def _amo_val(data: dict, key: str) -> str:
+    """Извлечь скалярное значение из QueryDict-словаря."""
+    raw = data.get(key)
+    if raw is None:
+        return ""
+    return raw[0] if isinstance(raw, list) else raw
 
 
 def _amo_lead_ids(data: dict) -> list[str]:

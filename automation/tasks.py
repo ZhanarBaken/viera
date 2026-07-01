@@ -5,6 +5,16 @@
 from celery import shared_task
 
 
+def _send_message(lead, msg):
+    """Отправить сообщение клиенту через правильный канал."""
+    from .models import LeadAutomation
+    from .integrations import WazzUp, AmoCRM
+    if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
+        AmoCRM().send_chat_message(lead.amojo_talk_id, msg.text, image_url=msg.image_url, phone=lead.phone)
+    else:
+        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
+
+
 def _get_lead(lead_id: str):
     from .models import LeadAutomation
     return LeadAutomation.objects.get(lead_id=lead_id)
@@ -14,6 +24,13 @@ def _schedule_next(lead, task_fn, delay_minutes: int):
     task = task_fn.apply_async(args=[lead.lead_id], countdown=delay_minutes * 60)
     lead.task_id = task.id
     lead.save(update_fields=["task_id", "updated_at"])
+
+
+def _close_at_eod(lead):
+    """23:57 в день создания лида по Алматы."""
+    from django.utils import timezone
+    created_local = timezone.localtime(lead.created_at)
+    return created_local.replace(hour=23, minute=57, second=0, microsecond=0)
 
 
 def _seconds_until_window(hour_start: int = 10, hour_end: int = 20) -> int:
@@ -80,7 +97,7 @@ def send_first_reminder(lead_id: str):
 
     msg = ReminderMessage.random_for(ReminderMessage.FIRST)
     if msg:
-        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
+        _send_message(lead, msg)
 
     config = AutomationConfig.get()
     _schedule_next(lead, send_second_reminder, config.second_reminder_delay)
@@ -111,11 +128,10 @@ def send_second_reminder(lead_id: str):
 
     msg = ReminderMessage.random_for(ReminderMessage.SECOND)
     if msg:
-        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
+        _send_message(lead, msg)
 
-    # Закрываем ровно через close_delay минут с момента создания лида
-    config = AutomationConfig.get()
-    close_at = lead.created_at + timedelta(minutes=config.close_delay)
+    # Закрываем в 23:57 в день создания лида
+    close_at = _close_at_eod(lead)
     countdown = max(0, (close_at - timezone.now()).total_seconds())
     task = close_lead.apply_async(args=[lead_id], countdown=countdown)
     lead.task_id = task.id
@@ -124,6 +140,9 @@ def send_second_reminder(lead_id: str):
 
 @shared_task
 def close_lead(lead_id: str):
+    import random
+    from datetime import timedelta
+    from django.utils import timezone
     from .models import LeadAutomation, AutomationConfig
     from .integrations import AmoCRM
 
@@ -138,8 +157,20 @@ def close_lead(lead_id: str):
     AmoCRM().close_lead(lead_id, phone=lead.phone)
     lead.status = LeadAutomation.CLOSED
 
+    # Реактивация — случайное время между 9:00 и 21:00 на 7-й день
     config = AutomationConfig.get()
-    _schedule_next(lead, send_reactivation, config.reactivation_delay)
+    reactivation_day = timezone.localtime() + timedelta(minutes=config.reactivation_delay)
+    total_minutes = random.randint(9 * 60, 21 * 60)
+    send_at = reactivation_day.replace(
+        hour=total_minutes // 60,
+        minute=total_minutes % 60,
+        second=0,
+        microsecond=0,
+    )
+    countdown = max(0, (send_at - timezone.now()).total_seconds())
+    task = send_reactivation.apply_async(args=[lead_id], countdown=countdown)
+    lead.task_id = task.id
+    lead.save(update_fields=["status", "task_id", "updated_at"])
 
 
 @shared_task
@@ -167,7 +198,7 @@ def send_reactivation(lead_id: str):
 
     msg = ReminderMessage.random_for(ReminderMessage.REACTIVATION)
     if msg:
-        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
+        _send_message(lead, msg)
 
     lead.task_id = ""
     lead.save(update_fields=["task_id", "updated_at"])
