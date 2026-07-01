@@ -1,7 +1,7 @@
 """Business logic — вызывается из views, не знает про HTTP."""
 from django.conf import settings
 from .models import LeadAutomation, AutomationConfig
-from .integrations import AmoCRM, Telegram
+from .integrations import AmoCRM, WazzUp, Telegram
 from . import tasks
 
 
@@ -95,7 +95,7 @@ def on_inbound_by_talk_id(talk_id: str):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        channel_name = settings.WAZZUP_CHANNEL_NAMES.get(lead.channel_id, lead.chat_type or "Viera Swim")
+        channel_name = WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "Viera Swim"
         Telegram().notify(
             f"💬 Клиент ответил!\n"
             f"Лид: {lead.lead_id}\n"
@@ -151,7 +151,7 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         crm.move_to_human(lead.lead_id, phone=lead.phone)
         lead.status = LeadAutomation.HUMAN
         lead.save()
-        channel_name = settings.WAZZUP_CHANNEL_NAMES.get(lead.channel_id, lead.chat_type or "неизвестен")
+        channel_name = WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "неизвестен"
         Telegram().notify(
             f"💬 Клиент ответил!\n"
             f"Лид: {lead.lead_id}\n"

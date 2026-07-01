@@ -129,6 +129,9 @@ class AmoCRM:
         self._post(f"/leads/{lead_id}/notes", [{"note_type": "common", "params": {"text": note}}])
 
 
+_wazzup_channel_names: dict = {}  # кэш: channel_id → name
+
+
 class WazzUp:
     """WazzUp24 API client. Base URL: https://api.wazzup24.com"""
 
@@ -139,6 +142,21 @@ class WazzUp:
             "Authorization": f"Bearer {settings.WAZZUP_TOKEN}",
             "Content-Type": "application/json",
         }
+
+    def get_channel_name(self, channel_id: str) -> str:
+        global _wazzup_channel_names
+        if not _wazzup_channel_names:
+            try:
+                r = requests.get(f"{self._BASE}/channels", headers=self._headers, timeout=10)
+                r.raise_for_status()
+                _wazzup_channel_names = {
+                    ch["channelId"]: ch.get("name", ch["channelId"])
+                    for ch in r.json()
+                    if "channelId" in ch
+                }
+            except Exception:
+                logger.exception("WazzUp get_channel_name failed")
+        return _wazzup_channel_names.get(channel_id, channel_id)
 
     def send_message(self, phone: str, text: str, channel_id: str, image_url: str = "", chat_type: str = "whatsapp"):
         if _is_dry_run(phone):
