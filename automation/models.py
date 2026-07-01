@@ -120,6 +120,6 @@ class LeadAutomation(models.Model):
 
     def cancel_pending_task(self):
         if self.task_id:
-            from celery.app.control import revoke
-            revoke(self.task_id, terminate=True)
+            from celery import current_app
+            current_app.control.revoke(self.task_id, terminate=True)
             self.task_id = ""
