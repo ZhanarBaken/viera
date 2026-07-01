@@ -45,6 +45,15 @@ def _channel_name(lead: LeadAutomation) -> str:
     return WazzUp().get_channel_name(lead.channel_id) if lead.channel_id else "неизвестен"
 
 
+def _client_label(lead: LeadAutomation, phone: str = "") -> str:
+    """Человекочитаемый идентификатор клиента для уведомлений."""
+    if lead.client_name:
+        return lead.client_name
+    if lead.chat_type == LeadAutomation.WHATSAPP:
+        return f"+{phone or lead.phone}"
+    return ""  # WazzUp Instagram — нет полезного идентификатора
+
+
 def _save_channel(lead: LeadAutomation, channel_id: str, chat_type: str = ""):
     fields = []
     if channel_id and not lead.channel_id:
@@ -100,11 +109,11 @@ def on_inbound_by_talk_id(talk_id: str):
         lead.status = LeadAutomation.HUMAN
         lead.save()
         channel_name = _channel_name(lead)
-        client = lead.client_name if lead.client_name else f"+{lead.phone}"
+        client = _client_label(lead)
         Telegram().notify(
             f"💬 Клиент ответил!\n"
-            f"Клиент: {client}\n"
-            f"Лид: {lead.lead_id}\n"
+            + (f"Клиент: {client}\n" if client else "")
+            + f"Лид: {lead.lead_id}\n"
             f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
         )
@@ -158,11 +167,11 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
         lead.status = LeadAutomation.HUMAN
         lead.save()
         channel_name = _channel_name(lead)
-        client = lead.client_name if lead.client_name else f"+{phone}"
+        client = _client_label(lead, phone)
         Telegram().notify(
             f"💬 Клиент ответил!\n"
-            f"Клиент: {client}\n"
-            f"Лид: {lead.lead_id}\n"
+            + (f"Клиент: {client}\n" if client else "")
+            + f"Лид: {lead.lead_id}\n"
             f"Канал: {channel_name}\n"
             f"Переведён в воронку «Нужен человек»"
         )
