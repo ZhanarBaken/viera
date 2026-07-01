@@ -5,7 +5,7 @@ from .integrations import AmoCRM, WazzUp, Telegram
 from . import tasks
 
 
-def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, amojo_talk_id: str = "", client_name: str = ""):
+def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, amojo_talk_id: str = "", client_name: str = "", chat_type: str = ""):
     """Новый лид в AmoCRM — фиксируем, ничего не делаем."""
     LeadAutomation.objects.get_or_create(
         lead_id=lead_id,
@@ -15,6 +15,7 @@ def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, a
             "source": source,
             "amojo_talk_id": amojo_talk_id,
             "client_name": client_name,
+            **({"chat_type": chat_type} if chat_type else {}),
         },
     )
 
@@ -49,6 +50,8 @@ def _client_label(lead: LeadAutomation, phone: str = "") -> str:
     """Человекочитаемый идентификатор клиента для уведомлений."""
     if lead.client_name:
         return lead.client_name
+    if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
+        return ""  # talk_id — не показываем
     if lead.chat_type == LeadAutomation.WHATSAPP:
         return f"+{phone or lead.phone}"
     return ""  # WazzUp Instagram — нет полезного идентификатора
