@@ -105,6 +105,7 @@ class LeadAutomation(models.Model):
     chat_type = models.CharField(max_length=20, choices=CHAT_TYPE_CHOICES, default=WHATSAPP, verbose_name="Тип чата")
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=WAZZUP, verbose_name="Источник")
     amojo_talk_id = models.CharField(max_length=100, blank=True, db_index=True, verbose_name="ID разговора AmoCRM")
+    client_name = models.CharField(max_length=255, blank=True, verbose_name="Имя клиента")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, verbose_name="Статус")
     task_id = models.CharField(max_length=255, blank=True, verbose_name="ID задачи Celery")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создан")

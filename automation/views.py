@@ -66,7 +66,8 @@ def amocrm_webhook(request):
                 if existing:
                     services.on_inbound_by_talk_id(msg_talk_id)
                 elif lead_id:
-                    services.on_new_lead(lead_id, phone=msg_talk_id, source="amocrm_instagram", amojo_talk_id=msg_talk_id)
+                    client_name = _amo_val(data, "message[add][0][author][name]")
+                    services.on_new_lead(lead_id, phone=msg_talk_id, source="amocrm_instagram", amojo_talk_id=msg_talk_id, client_name=client_name)
             elif msg_type == "outgoing":
                 services.on_outbound_by_talk_id(msg_talk_id)
         else:

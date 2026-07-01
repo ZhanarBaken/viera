@@ -5,7 +5,7 @@ from .integrations import AmoCRM, WazzUp, Telegram
 from . import tasks
 
 
-def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, amojo_talk_id: str = ""):
+def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, amojo_talk_id: str = "", client_name: str = ""):
     """Новый лид в AmoCRM — фиксируем, ничего не делаем."""
     LeadAutomation.objects.get_or_create(
         lead_id=lead_id,
@@ -14,6 +14,7 @@ def on_new_lead(lead_id: str, phone: str, source: str = LeadAutomation.WAZZUP, a
             "status": LeadAutomation.NEW,
             "source": source,
             "amojo_talk_id": amojo_talk_id,
+            "client_name": client_name,
         },
     )
 

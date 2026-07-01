@@ -10,9 +10,11 @@ def _send_message(lead, msg):
     from .models import LeadAutomation
     from .integrations import WazzUp, Telegram
     if lead.source == LeadAutomation.AMOCRM_INSTAGRAM:
+        client = lead.client_name or "—"
         Telegram().notify(
             f"📨 Отправьте напоминание вручную в Viera Swim (Instagram)\n"
-            f"Лид: {lead.lead_id}\n\n"
+            f"Лид: {lead.lead_id}\n"
+            f"Клиент: {client}\n\n"
             f"Текст:\n{msg.text}"
         )
     else:
