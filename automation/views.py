@@ -3,6 +3,7 @@ POST /webhooks/wazzup/   — входящие сообщения от клиен
 POST /webhooks/amocrm/   — новые лиды + ответы менеджера (AmoCRM)
 """
 import logging
+from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from . import services
@@ -26,6 +27,9 @@ def wazzup_webhook(request):
         channel_id = message.get("channelId", "")
         chat_type = message.get("chatType", "whatsapp")
         if not phone:
+            continue
+        if channel_id and channel_id not in settings.WAZZUP_CHANNEL_IDS:
+            logger.info("WazzUp: unknown channel %s, skipping", channel_id)
             continue
 
         save_message(phone, message)
