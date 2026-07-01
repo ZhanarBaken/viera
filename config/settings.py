@@ -101,4 +101,3 @@ DRY_RUN = env.bool("DRY_RUN", default=False)
 DRY_RUN_EXCEPTIONS = {"".join(c for c in p if c.isdigit()) for p in env.list("DRY_RUN_EXCEPTIONS", default=[])}
 
 
-WAZZUP_CHANNEL_IDS = set(env.list("WAZZUP_CHANNEL_IDS"))

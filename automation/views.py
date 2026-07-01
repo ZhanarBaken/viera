@@ -28,9 +28,6 @@ def wazzup_webhook(request):
         chat_type = message.get("chatType", "whatsapp")
         if not phone:
             continue
-        if channel_id and channel_id not in settings.WAZZUP_CHANNEL_IDS:
-            logger.info("WazzUp: unknown channel %s, skipping", channel_id)
-            continue
 
         save_message(phone, message)
         client_name = message.get("contact", {}).get("name", "")
