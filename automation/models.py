@@ -11,9 +11,9 @@ class AutomationConfig(models.Model):
         help_text="Сколько минут ждать ответа клиента после того как менеджер написал",
     )
     first_reminder_delay = models.PositiveIntegerField(
-        default=100,
+        default=120,
         verbose_name="Задержка первого напоминания (мин)",
-        help_text="1 час 40 минут = 100",
+        help_text="2 часа = 120",
     )
     second_reminder_delay = models.PositiveIntegerField(
         default=360,
