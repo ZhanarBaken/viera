@@ -173,6 +173,7 @@ def close_lead(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
+    lead.cancel_pending_task()  # отменяем ещё не сработавшее напоминание, если оно есть
     AmoCRM().close_lead(lead_id, phone=lead.phone)
     lead.status = LeadAutomation.CLOSED
 
