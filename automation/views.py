@@ -22,10 +22,21 @@ def wazzup_webhook(request):
 
     logger.info("WazzUp webhook: %s", data)
 
+    for status in data.get("statuses", []):
+        logger.info(
+            "WazzUp status: messageId=%s status=%s timestamp=%s",
+            status.get("messageId"), status.get("status"), status.get("timestamp"),
+        )
+
     for message in data.get("messages", []):
         phone = _extract_phone(message)
         channel_id = message.get("channelId", "")
         chat_type = message.get("chatType", "whatsapp")
+        logger.info(
+            "WazzUp message: chatType=%s chatId=%s phone=%s status=%s isEcho=%s dateTime=%s",
+            chat_type, message.get("chatId"), phone, message.get("status"),
+            message.get("isEcho"), message.get("dateTime"),
+        )
         if not phone:
             logger.warning(
                 "WazzUp message skipped, no phone: chatType=%s chatId=%s contact=%s",
