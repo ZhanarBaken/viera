@@ -20,13 +20,17 @@ def wazzup_webhook(request):
     if data.get("test"):
         return Response({"ok": True})
 
-    logger.debug("WazzUp webhook: %s", data)
+    logger.info("WazzUp webhook: %s", data)
 
     for message in data.get("messages", []):
         phone = _extract_phone(message)
         channel_id = message.get("channelId", "")
         chat_type = message.get("chatType", "whatsapp")
         if not phone:
+            logger.warning(
+                "WazzUp message skipped, no phone: chatType=%s chatId=%s contact=%s",
+                chat_type, message.get("chatId"), message.get("contact"),
+            )
             continue
 
         save_message(phone, message)

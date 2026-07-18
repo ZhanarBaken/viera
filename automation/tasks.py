@@ -33,13 +33,15 @@ def _schedule_next(lead, task_fn, delay_minutes: int):
 
 
 def _close_at_eod(lead):
-    """23:57 в день создания лида по Алматы."""
+    """23:59 в день создания лида по Алматы (если создан после 19:00 — на следующий день)."""
     from django.utils import timezone
+    from datetime import timedelta
     created_local = timezone.localtime(lead.created_at)
-    return created_local.replace(hour=23, minute=57, second=0, microsecond=0)
+    close_day = created_local if created_local.hour < 19 else created_local + timedelta(days=1)
+    return close_day.replace(hour=23, minute=59, second=0, microsecond=0)
 
 
-def _seconds_until_window(hour_start: int = 10, hour_end: int = 20) -> int:
+def _seconds_until_window(hour_start: int = 10, hour_end: int = 21) -> int:
     """Возвращает 0 если сейчас в окне hour_start–hour_end (Алматы), иначе секунды до открытия."""
     from django.utils import timezone
     from datetime import timedelta
@@ -60,6 +62,7 @@ def _seconds_until_window(hour_start: int = 10, hour_end: int = 20) -> int:
 def check_client_response(lead_id: str):
     """Срабатывает через manager_reply_wait минут после ответа менеджера."""
     from django.conf import settings
+    from django.utils import timezone
     from .models import LeadAutomation, AutomationConfig
     from .integrations import AmoCRM
 
@@ -82,6 +85,12 @@ def check_client_response(lead_id: str):
     config = AutomationConfig.get()
     _schedule_next(lead, send_first_reminder, config.first_reminder_delay)
 
+    # Закрытие планируется сразу и не зависит от того, успели ли уйти напоминания —
+    # close_lead сам проверит при срабатывании, что лид всё ещё в DRIP.
+    close_at = _close_at_eod(lead)
+    countdown = max(0, (close_at - timezone.now()).total_seconds())
+    close_lead.apply_async(args=[lead_id], countdown=countdown)
+
 
 def _is_in_drip(lead_id: str) -> bool:
     from django.conf import settings
@@ -102,6 +111,14 @@ def send_first_reminder(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
+    # Отправляем только в окне 10:00–21:00 по Алматы
+    wait = _seconds_until_window()
+    if wait > 0:
+        task = send_first_reminder.apply_async(args=[lead_id], countdown=wait)
+        lead.task_id = task.id
+        lead.save(update_fields=["task_id", "updated_at"])
+        return
+
     msg = ReminderMessage.random_for(ReminderMessage.FIRST)
     if msg:
         _send_message(lead, msg)
@@ -112,8 +129,6 @@ def send_first_reminder(lead_id: str):
 
 @shared_task
 def send_second_reminder(lead_id: str):
-    from django.utils import timezone
-    from datetime import timedelta
     from .models import LeadAutomation, AutomationConfig, ReminderMessage
     from .integrations import WazzUp
 
@@ -125,8 +140,8 @@ def send_second_reminder(lead_id: str):
         lead.save(update_fields=["task_id", "updated_at"])
         return
 
-    # Отправляем только в окне 10:00–20:00 по Алматы
-    wait = _seconds_until_window(hour_start=10, hour_end=20)
+    # Отправляем только в окне 10:00–21:00 по Алматы
+    wait = _seconds_until_window()
     if wait > 0:
         task = send_second_reminder.apply_async(args=[lead_id], countdown=wait)
         lead.task_id = task.id
@@ -137,11 +152,8 @@ def send_second_reminder(lead_id: str):
     if msg:
         _send_message(lead, msg)
 
-    # Закрываем в 23:57 в день создания лида
-    close_at = _close_at_eod(lead)
-    countdown = max(0, (close_at - timezone.now()).total_seconds())
-    task = close_lead.apply_async(args=[lead_id], countdown=countdown)
-    lead.task_id = task.id
+    # Закрытие уже запланировано отдельно в check_client_response — здесь ничего не делаем
+    lead.task_id = ""
     lead.save(update_fields=["task_id", "updated_at"])
 
 

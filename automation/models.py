@@ -18,7 +18,7 @@ class AutomationConfig(models.Model):
     second_reminder_delay = models.PositiveIntegerField(
         default=360,
         verbose_name="Задержка второго напоминания (мин)",
-        help_text="6 часов = 360. Отправляется только в 10:00–20:00 по Алматы, иначе откладывается до 10:00.",
+        help_text="6 часов = 360. Отправляется только в 10:00–21:00 по Алматы, иначе откладывается до 10:00.",
     )
     reactivation_delay = models.PositiveIntegerField(
         default=10080,
