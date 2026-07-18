@@ -150,28 +150,11 @@ def on_inbound_by_talk_id(talk_id: str):
     lead = (
         LeadAutomation.objects
         .filter(amojo_talk_id=talk_id)
-        .exclude(status__in=[LeadAutomation.HUMAN, LeadAutomation.NEW])
+        .exclude(status__in=[LeadAutomation.CLOSED, LeadAutomation.HUMAN, LeadAutomation.NEW])
         .order_by("-created_at")
         .first()
     )
     if lead is None:
-        return
-
-    if lead.status == LeadAutomation.CLOSED:
-        lead.cancel_pending_task()
-        crm = AmoCRM()
-        crm.move_to_human(lead.lead_id, phone=lead.phone)
-        lead.status = LeadAutomation.HUMAN
-        lead.save()
-        channel_name = _channel_name(lead)
-        client = _client_label(lead)
-        Telegram().notify(
-            f"💬 Клиент написал снова (лид был закрыт)!\n"
-            + (f"Клиент: {client}\n" if client else "")
-            + f"Лид: {lead.lead_id}\n"
-            f"Канал: {channel_name}\n"
-            f"Переведён в воронку «Нужен человек»"
-        )
         return
 
     if lead.status == LeadAutomation.WAITING:
