@@ -18,7 +18,10 @@ def _send_message(lead, msg):
             f"Текст:\n{msg.text}"
         )
     else:
-        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type)
+        # Для Instagram WazzUp ждёт в chatId юзернейм, а не наш внутренний ID (igsid) —
+        # но phone всё равно передаём отдельно, он нужен для проверки DRY_RUN_EXCEPTIONS
+        chat_id = lead.wz_username if lead.chat_type == LeadAutomation.INSTAGRAM and lead.wz_username else ""
+        WazzUp().send_message(lead.phone, msg.text, lead.channel_id, image_url=msg.image_url, chat_type=lead.chat_type, chat_id=chat_id)
 
 
 def _get_lead(lead_id: str):

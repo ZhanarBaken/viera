@@ -155,11 +155,18 @@ def _amo_val(data: dict, key: str) -> str:
 
 def _extract_phone(message: dict) -> str:
     """WhatsApp даёт номер в contact.phone или chatId. Instagram — не даёт
-    телефона вообще, а chatId там — юзернейм (может случайно содержать цифры,
-    например "sha1karovnaa"), поэтому для него берём именно contact.igsid —
-    числовой Instagram-ID, а не пытаемся выковырять цифры из юзернейма."""
+    телефона вообще, а chatId там обычно юзернейм (может случайно содержать
+    цифры, например "sha1karovnaa"), поэтому для него берём contact.igsid —
+    числовой Instagram-ID, а не пытаемся выковырять цифры из юзернейма.
+    Иногда contact.igsid отсутствует, а chatId сам по себе уже чисто
+    числовой (реальный igsid) — тогда используем его напрямую, это безопасно
+    именно потому что проверяем "весь chatId — цифры", а не "есть цифры"."""
     contact = message.get("contact", {})
     if message.get("chatType") == "instagram":
-        return "".join(c for c in (contact.get("igsid") or "") if c.isdigit())
+        igsid = "".join(c for c in (contact.get("igsid") or "") if c.isdigit())
+        if igsid:
+            return igsid
+        chat_id = message.get("chatId", "")
+        return chat_id if chat_id.isdigit() else ""
     raw = contact.get("phone") or message.get("chatId", "")
     return "".join(c for c in raw if c.isdigit())
