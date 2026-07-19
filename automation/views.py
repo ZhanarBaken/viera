@@ -7,7 +7,7 @@ from django.conf import settings
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from . import services
-from .redis_store import save_message
+from .redis_store import save_message, is_bot_message
 from .integrations import AmoCRM
 
 logger = logging.getLogger(__name__)
@@ -48,7 +48,10 @@ def wazzup_webhook(request):
         client_name = message.get("contact", {}).get("name", "")
 
         if message.get("isEcho", False):
-            services.on_outbound(phone, channel_id, chat_type)
+            if is_bot_message(message.get("messageId")):
+                logger.info("WazzUp echo of our own reminder, ignoring: messageId=%s", message.get("messageId"))
+            else:
+                services.on_outbound(phone, channel_id, chat_type)
         else:
             services.on_inbound(phone, channel_id, chat_type, client_name=client_name)
 

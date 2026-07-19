@@ -26,3 +26,17 @@ def get_messages(phone: str, limit: int = 50) -> list[dict]:
     key = f"wazzup:chat:{phone}"
     raw = _redis().lrange(key, 0, limit - 1)
     return [json.loads(m) for m in raw]
+
+
+BOT_MESSAGE_TTL = 3600  # с запасом — эхо обычно приходит от WazzUp почти сразу
+
+
+def mark_bot_message(message_id: str):
+    """Пометить messageId как отправленный самим ботом — чтобы отличить от ответа менеджера,
+    когда WazzUp пришлёт его же обратно эхом (isEcho=True)."""
+    if message_id:
+        _redis().setex(f"wazzup:bot_sent:{message_id}", BOT_MESSAGE_TTL, "1")
+
+
+def is_bot_message(message_id: str) -> bool:
+    return bool(message_id) and bool(_redis().exists(f"wazzup:bot_sent:{message_id}"))

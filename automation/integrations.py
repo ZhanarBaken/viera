@@ -195,7 +195,10 @@ class WazzUp:
             payload["text"] = text
         r = requests.post(f"{self._BASE}/message", json=payload, headers=self._headers, timeout=10)
         r.raise_for_status()
-        return r.json()
+        result = r.json()
+        from .redis_store import mark_bot_message
+        mark_bot_message(result.get("messageId"))
+        return result
 
     def subscribe_webhooks(self, url: str):
         r = requests.patch(
