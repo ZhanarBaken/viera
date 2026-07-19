@@ -91,12 +91,14 @@ def amocrm_webhook(request):
             logger.info("CHAT MESSAGE: origin=%s — ignoring (handled by WazzUp)", origin)
         return Response({"ok": True})
 
-    # leads[status] — статус сделки изменён (вручную менеджером или другой автоматизацией AmoCRM)
-    status_lead_id = _amo_val(data, "leads[status][0][id]")
-    if status_lead_id:
-        new_status_id = _amo_val(data, "leads[status][0][status_id]")
-        logger.info("leads[status]: lead_id=%s status_id=%s", status_lead_id, new_status_id)
-        services.on_lead_status_changed(status_lead_id, new_status_id)
+    # leads[update] — сделка изменена, в т.ч. статус (вручную менеджером или другой
+    # автоматизацией AmoCRM). Судя по реальным вебхукам, статус приходит именно
+    # под ключом "update", а не "status" — событие "leads[status]" тут не используется.
+    update_lead_id = _amo_val(data, "leads[update][0][id]")
+    if update_lead_id:
+        new_status_id = _amo_val(data, "leads[update][0][status_id]")
+        logger.info("leads[update]: lead_id=%s status_id=%s", update_lead_id, new_status_id)
+        services.on_lead_status_changed(update_lead_id, new_status_id)
         return Response({"ok": True})
 
     # Менеджер написал клиенту в Instagram Business (talk[update] is_in_work=1)
