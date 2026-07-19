@@ -117,6 +117,23 @@ def amocrm_webhook(request):
                     services.on_new_lead(lead_id, phone)
         return Response({"ok": True})
 
+    # leads[add] — сделка создана напрямую (например SalesBot, без своего сообщения в чате)
+    lead_add_id = _amo_val(data, "leads[add][0][id]")
+    if lead_add_id:
+        logger.info("leads[add]: lead_id=%s", lead_add_id)
+        from .models import LeadAutomation
+        if not LeadAutomation.objects.filter(lead_id=lead_add_id).exists():
+            channel_id = crm.get_lead_wz_channel_id(lead_add_id)
+            if channel_id:
+                services.link_instagram_lead_id(lead_add_id, channel_id)
+            else:
+                phone = crm.get_lead_phone(lead_add_id)
+                if phone:
+                    linked = services.link_lead_id_by_phone(lead_add_id, phone)
+                    if not linked:
+                        services.on_new_lead(lead_add_id, phone)
+        return Response({"ok": True})
+
     return Response({"ok": True})
 
 
