@@ -151,6 +151,32 @@ def on_outbound_by_talk_id(talk_id: str):
     _schedule_check(lead)
 
 
+LEAD_STATUS_WON = "142"
+LEAD_STATUS_LOST = "143"
+
+
+def on_lead_status_changed(lead_id: str, status_id: str):
+    """Сделка изменена в AmoCRM (leads[status]). Реагируем только на терминальные
+    статусы — УСПЕХ (142) и НЕУСПЕХ (143) — неважно, поставил их бот сам (close_lead)
+    или человек вручную: в обоих случаях лид больше не должен быть у бота под
+    контролем. Ставим CLOSED — благодаря этому новое сообщение от того же клиента
+    (см. on_inbound/on_inbound_by_talk_id) корректно создаст новый лид, а не будет
+    пытаться писать в уже закрытый."""
+    if status_id not in (LEAD_STATUS_WON, LEAD_STATUS_LOST):
+        return
+    lead = LeadAutomation.objects.filter(
+        lead_id=lead_id, status__in=[LeadAutomation.WAITING, LeadAutomation.DRIP]
+    ).first()
+    if lead is None:
+        return
+    lead.cancel_pending_task()
+    lead.status = LeadAutomation.CLOSED
+    lead.save()
+    logger.info(
+        "Lead %s closed via AmoCRM status change (status_id=%s)", lead_id, status_id
+    )
+
+
 def on_inbound_by_talk_id(talk_id: str):
     """Клиент написал через AmoCRM Instagram DM."""
     lead = (
