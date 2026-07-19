@@ -162,15 +162,14 @@ LEAD_STATUS_LOST = "143"
 def on_lead_status_changed(lead_id: str, status_id: str):
     """Сделка изменена в AmoCRM (leads[status]). Реагируем только на терминальные
     статусы — УСПЕХ (142) и НЕУСПЕХ (143) — неважно, поставил их бот сам (close_lead)
-    или человек вручную: в обоих случаях лид больше не должен быть у бота под
-    контролем. Ставим CLOSED — благодаря этому новое сообщение от того же клиента
+    или человек вручную, и неважно, в каком статусе лид у нас сейчас (new/waiting/
+    drip/human) — если AmoCRM сказала "всё, финал", бот везде останавливается.
+    Ставим CLOSED — благодаря этому новое сообщение от того же клиента
     (см. on_inbound/on_inbound_by_talk_id) корректно создаст новый лид, а не будет
     пытаться писать в уже закрытый."""
     if status_id not in (LEAD_STATUS_WON, LEAD_STATUS_LOST):
         return
-    lead = LeadAutomation.objects.filter(
-        lead_id=lead_id, status__in=[LeadAutomation.WAITING, LeadAutomation.DRIP]
-    ).first()
+    lead = LeadAutomation.objects.filter(lead_id=lead_id).exclude(status=LeadAutomation.CLOSED).first()
     if lead is None:
         return
     lead.cancel_pending_task()
