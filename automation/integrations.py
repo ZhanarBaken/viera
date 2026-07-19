@@ -25,9 +25,16 @@ class AmoCRM:
         }
 
     def _get(self, path: str, params: dict = None) -> dict:
-        r = requests.get(f"{self._base}{path}", headers=self._headers, params=params, timeout=10)
-        r.raise_for_status()
-        return r.json()
+        for attempt in range(2):
+            r = requests.get(f"{self._base}{path}", headers=self._headers, params=params, timeout=10)
+            r.raise_for_status()
+            try:
+                return r.json()
+            except ValueError:
+                if attempt == 0:
+                    logger.warning("AmoCRM GET %s returned non-JSON body, retrying once", path)
+                    continue
+                raise
 
     def _patch(self, path: str, data: dict) -> dict:
         r = requests.patch(f"{self._base}{path}", json=data, headers=self._headers, timeout=10)
@@ -40,8 +47,14 @@ class AmoCRM:
         return r.json()
 
     def get_lead_info(self, lead_id: str) -> dict:
-        """Возвращает pipeline_id, status_id и responsible_user_id одним запросом."""
-        data = self._get(f"/leads/{lead_id}")
+        """Возвращает pipeline_id, status_id и responsible_user_id одним запросом.
+        При сбое (AmoCRM иногда отдаёт пустой ответ) не падает — возвращает пустой
+        status_id, чтобы вызывающий код безопасно ничего не делал вместо краха задачи."""
+        try:
+            data = self._get(f"/leads/{lead_id}")
+        except Exception:
+            logger.exception("AmoCRM get_lead_info failed for lead_id=%s", lead_id)
+            return {"pipeline_id": None, "status_id": "", "responsible_user_id": None}
         return {
             "pipeline_id": data.get("pipeline_id"),
             "status_id": str(data.get("status_id", "")),
