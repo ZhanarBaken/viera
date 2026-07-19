@@ -99,27 +99,33 @@ def link_lead_id_by_phone(lead_id: str, phone: str) -> bool:
     return False
 
 
-def link_instagram_lead_id(lead_id: str, channel_id: str):
-    """Привязать lead_id к WazzUp Instagram LeadAutomation созданному из вебхука (без lead_id)."""
+def link_instagram_lead_id(lead_id: str, channel_id: str = "", username: str = "") -> bool:
+    """Привязать lead_id к WazzUp Instagram LeadAutomation созданному из вебхука (без lead_id).
+    Сначала по юзернейму (надёжно, не зависит от тега на лиде в AmoCRM),
+    и только если не нашли — по каналу (старый способ, на случай если юзернейм не сохранён)."""
     from django.utils import timezone
     from datetime import timedelta
     cutoff = timezone.now() - timedelta(minutes=10)
-    lead = (
-        LeadAutomation.objects
-        .filter(
-            channel_id=channel_id,
-            chat_type=LeadAutomation.INSTAGRAM,
-            source=LeadAutomation.WAZZUP,
-            lead_id=None,
-            created_at__gte=cutoff,
-        )
-        .order_by("-created_at")
-        .first()
+    base_qs = LeadAutomation.objects.filter(
+        chat_type=LeadAutomation.INSTAGRAM,
+        source=LeadAutomation.WAZZUP,
+        lead_id=None,
+        created_at__gte=cutoff,
     )
+    lead = None
+    if username:
+        lead = base_qs.filter(wz_username__iexact=username).order_by("-created_at").first()
+    if lead is None and channel_id:
+        lead = base_qs.filter(channel_id=channel_id).order_by("-created_at").first()
     if lead:
         lead.lead_id = lead_id
-        lead.save(update_fields=["lead_id", "updated_at"])
         logger.info("Linked lead_id=%s to WazzUp Instagram lead phone=%s", lead_id, lead.phone)
+        if lead.status == LeadAutomation.WAITING:
+            _schedule_check(lead)
+        else:
+            lead.save(update_fields=["lead_id", "updated_at"])
+        return True
+    return False
 
 
 def _schedule_check(lead: LeadAutomation):
@@ -199,7 +205,7 @@ def on_outbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     _schedule_check(lead)
 
 
-def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", client_name: str = ""):
+def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", client_name: str = "", wz_username: str = ""):
     """Клиент написал нам (WazzUp inbound) — ищем его активный лид."""
     lead = (
         LeadAutomation.objects
@@ -218,6 +224,7 @@ def on_inbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp", cl
                 channel_id=channel_id,
                 chat_type=chat_type,
                 client_name=client_name or "",
+                wz_username=wz_username,
             )
         return
 

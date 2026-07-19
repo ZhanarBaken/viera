@@ -106,6 +106,10 @@ class LeadAutomation(models.Model):
     source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default=WAZZUP, verbose_name="Источник")
     amojo_talk_id = models.CharField(max_length=100, blank=True, db_index=True, verbose_name="ID разговора AmoCRM")
     client_name = models.CharField(max_length=255, blank=True, verbose_name="Имя клиента")
+    wz_username = models.CharField(
+        max_length=100, blank=True, verbose_name="Instagram юзернейм (WazzUp)",
+        help_text="Для привязки lead_id по полю контакта Instagram_WZ в AmoCRM — надёжнее, чем тег канала",
+    )
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=WAITING, verbose_name="Статус")
     task_id = models.CharField(max_length=255, blank=True, verbose_name="ID задачи Celery")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Создан")

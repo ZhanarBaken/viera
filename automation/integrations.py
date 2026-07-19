@@ -115,6 +115,33 @@ class AmoCRM:
             logger.exception("AmoCRM get_lead_phone failed for lead_id=%s", lead_id)
         return ""
 
+    def get_contact_instagram_username(self, contact_id: str) -> str:
+        """Юзернейм Instagram из поля контакта Instagram_WZ — надёжнее тега на лиде,
+        не зависит от того, успела ли AmoCRM протегировать сделку."""
+        try:
+            contact = self._get(f"/contacts/{contact_id}")
+            for field in contact.get("custom_fields_values") or []:
+                if field.get("field_name") == "Instagram_WZ":
+                    for v in field.get("values", []):
+                        username = str(v.get("value", "")).lstrip("@").strip()
+                        if username:
+                            return username
+        except Exception:
+            logger.exception("get_contact_instagram_username failed for contact_id=%s", contact_id)
+        return ""
+
+    def get_lead_instagram_username(self, lead_id: str) -> str:
+        """Юзернейм Instagram контакта по lead_id (для повторных клиентов)."""
+        try:
+            data = self._get(f"/leads/{lead_id}", params={"with": "contacts"})
+            contacts = data.get("_embedded", {}).get("contacts", [])
+            if not contacts:
+                return ""
+            return self.get_contact_instagram_username(contacts[0]["id"])
+        except Exception:
+            logger.exception("get_lead_instagram_username failed for lead_id=%s", lead_id)
+        return ""
+
     def move_to_drip(self, lead_id: str, phone: str = ""):
         if _is_dry_run(phone):
             logger.info("[DRY_RUN] move_to_drip lead_id=%s", lead_id)

@@ -46,6 +46,7 @@ def wazzup_webhook(request):
 
         save_message(phone, message)
         client_name = message.get("contact", {}).get("name", "")
+        wz_username = message.get("chatId", "") if chat_type == "instagram" else ""
 
         if message.get("isEcho", False):
             if is_bot_message(message.get("messageId")):
@@ -53,7 +54,7 @@ def wazzup_webhook(request):
             else:
                 services.on_outbound(phone, channel_id, chat_type)
         else:
-            services.on_inbound(phone, channel_id, chat_type, client_name=client_name)
+            services.on_inbound(phone, channel_id, chat_type, client_name=client_name, wz_username=wz_username)
 
     return Response({"ok": True})
 
@@ -109,9 +110,10 @@ def amocrm_webhook(request):
         lead_id = talk_entity_id
         logger.info("talk[add]: lead_id=%s origin=%s", lead_id, talk_origin)
         if "insta" in talk_origin:
+            contact_id = _amo_val(data, "talk[add][0][contact_id]")
+            username = crm.get_contact_instagram_username(contact_id) if contact_id else ""
             channel_id = crm.get_lead_wz_channel_id(lead_id)
-            if channel_id:
-                services.link_instagram_lead_id(lead_id, channel_id)
+            services.link_instagram_lead_id(lead_id, channel_id=channel_id, username=username)
         else:
             phone = crm.get_lead_phone(lead_id)
             if phone:
@@ -126,10 +128,12 @@ def amocrm_webhook(request):
         logger.info("leads[add]: lead_id=%s", lead_add_id)
         from .models import LeadAutomation
         if not LeadAutomation.objects.filter(lead_id=lead_add_id).exists():
+            username = crm.get_lead_instagram_username(lead_add_id)
             channel_id = crm.get_lead_wz_channel_id(lead_add_id)
-            if channel_id:
-                services.link_instagram_lead_id(lead_add_id, channel_id)
-            else:
+            linked = False
+            if username or channel_id:
+                linked = services.link_instagram_lead_id(lead_add_id, channel_id=channel_id, username=username)
+            if not linked:
                 phone = crm.get_lead_phone(lead_add_id)
                 if phone:
                     linked = services.link_lead_id_by_phone(lead_add_id, phone)
