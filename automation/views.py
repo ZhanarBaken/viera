@@ -29,9 +29,13 @@ def wazzup_webhook(request):
         )
 
     for message in data.get("messages", []):
+        chat_type = message.get("chatType", "whatsapp")
+        if chat_type == "whatsgroup":
+            # Групповые чаты не бывают лидами в AmoCRM — не заводим по ним записи вообще
+            continue
+
         phone = _extract_phone(message)
         channel_id = message.get("channelId", "")
-        chat_type = message.get("chatType", "whatsapp")
         logger.info(
             "WazzUp message: chatType=%s chatId=%s phone=%s status=%s isEcho=%s dateTime=%s",
             chat_type, message.get("chatId"), phone, message.get("status"),
