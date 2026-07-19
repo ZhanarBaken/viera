@@ -143,6 +143,10 @@ def on_outbound_by_talk_id(talk_id: str):
     lead = _get_active_lead_by_talk_id(talk_id)
     if lead is None:
         return
+    if lead.status == LeadAutomation.DRIP:
+        # Лид уже в "Дожим бот" — не сбрасываем таймер на waiting, иначе повторная
+        # проверка увидит лид в drip (не в стартовых этапах) и решит, что его увели
+        return
     lead.cancel_pending_task()
     lead.status = LeadAutomation.WAITING
     if not lead.lead_id:
@@ -219,6 +223,11 @@ def on_outbound(phone: str, channel_id: str = "", chat_type: str = "whatsapp"):
     """Менеджер написал клиенту (WazzUp outbound) — запускаем таймер для активного лида."""
     lead = _get_active_lead(phone)
     if lead is None:
+        return
+
+    if lead.status == LeadAutomation.DRIP:
+        # Лид уже в "Дожим бот" — не сбрасываем таймер на waiting, иначе повторная
+        # проверка увидит лид в drip (не в стартовых этапах) и решит, что его увели
         return
 
     _save_channel(lead, channel_id, chat_type)
